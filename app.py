@@ -10,9 +10,8 @@ import streamlit as st
 st.set_page_config(page_title="SCFI 추이 분석 대시보드", page_icon="🚢", layout="wide")
 
 # ---------------------------------------------------------------------------
-# 1) 확정 백데이터 (2020-01 ~ 2026-08, 국가물류통합정보센터 제공 335개 지점)
-#    date  : 차트용 근사 날짜(ISO) — 월평균/기간 표기 항목은 해당 기간 중앙값으로 설정
-#    label : 원본 표기(발표 주차/기간)
+# 1) 확정 백데이터 (2020-01 ~ 2026-08, 국가물류통합정보센터 제공 335개 주간 지점)
+#    date, label : 국가물류통합정보센터 발표 기준 실제 주간 날짜(YYYY-MM-DD)
 # ---------------------------------------------------------------------------
 DATA = [
     dict(date="2020-01-03", label="2020-01-03", value=1022.72, type="주간", note="",
@@ -759,11 +758,10 @@ f = df.copy()
 st.title("🚢 SCFI 추이 분석 대시보드")
 st.caption("2020.01 ~ 2026.08 · 확정 백데이터 335개 지점, 전 구간 국가물류통합정보센터 공식 주간 원자료 기반")
 
-c1, c2, c3, c4 = st.columns(4)
+c1, c2, c3 = st.columns(3)
 c1.metric("최고치", f'{f["value"].max():,.2f} pt', f['label'][f['value'].idxmax()] if len(f) else "-")
 c2.metric("최저치", f'{f["value"].min():,.2f} pt', f['label'][f['value'].idxmin()] if len(f) else "-")
 c3.metric("표시 지점 수", f"{len(f)}개")
-c4.metric("산술검증 지점", f'{int(f["verified"].sum())}개')
 
 # ---------------------------------------------------------------------------
 # 4) 차트
@@ -772,10 +770,7 @@ fig = go.Figure()
 fig.add_trace(go.Scatter(
     x=f["date"], y=f["value"], mode="lines+markers", name="SCFI",
     line=dict(color="#2f6fed", width=2),
-    marker=dict(
-        size=[10 if v else 6 for v in f["verified"]],
-        color=["#2f9e6f" if v else "#2f6fed" for v in f["verified"]],
-    ),
+    marker=dict(size=5, color="#2f6fed"),
     customdata=f[["label", "source", "note"]],
     hovertemplate="<b>%{customdata[0]}</b><br>SCFI: %{y:,.2f}pt<br>출처: %{customdata[1]}<br>%{customdata[2]}<extra></extra>",
 ))
@@ -800,7 +795,7 @@ fig.update_layout(
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
 )
 st.plotly_chart(fig, use_container_width=True)
-st.caption("초록 점: 전후 수치와 산술적으로 맞아떨어지는 지점 / 파란 점: 단일 출처 확인 지점 / 세모 마커: 글로벌 물류 이슈")
+st.caption("세모 마커: 글로벌 물류 이슈 발생 시점")
 
 # ---------------------------------------------------------------------------
 # 4-1) 글로벌 물류 이슈 상세
@@ -815,10 +810,10 @@ IMPACT = {
     ],
     "홍해-수에즈 운하 사태": [
         "희망봉 우회로 운항 기간 2주 증가",
-        "SCFI 73.17%~274% 급등",
+        "SCFI 90%~273% 급등",
         "안전재고·발주 시점 재조정 불가피",
         "스팟 운임 급등기엔 장기계약 비중 확대 전략 확산",
-        "2025년 1월 휴전 이후에도 3월(美 대이란 군사작전)·7월(Magic Seas·Eternity C호 침몰) 공격 재발, \"끝났다\"고 보기 어려운 상태 지속",
+        "2025년 1월 휴전 이후에도 3월(미국 대이란 군사작전)·7월(Magic Seas·Eternity C호 침몰) 공격 재발, \"끝났다\"고 보기 어려운 상태 지속",
     ],
     "파나마 운하 리스크": [
         "가뭄으로 통항 선박 수 36~38척 → 24척 감소",
@@ -872,10 +867,6 @@ for i, (issue, color) in enumerate(ISSUE_COLOR.items(), start=1):
     if i < len(ISSUE_COLOR):
         st.markdown("---")
 st.markdown("---")
-st.caption(
-    "파나마 운하 리스크는 주로 미주동안(USEC) 항로에 영향을 미치는 구조라, "
-    "2023-2024년은 홍해 사태와 시기가 겹쳐서 SCFI 종합지수 변동을 파나마 요인만으로 단정하기는 어렵다."
-)
 
 # ---------------------------------------------------------------------------
 # 5) 데이터 테이블
