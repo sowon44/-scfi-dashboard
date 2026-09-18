@@ -745,23 +745,13 @@ ISSUE_COLOR = {
 }
 
 # ---------------------------------------------------------------------------
-# 2) 사이드바 필터
+# 2) 표시 범위 (고정값 - 전체 기간, 전체 데이터 표시)
 # ---------------------------------------------------------------------------
-st.sidebar.header("🔎 필터")
 min_d, max_d = df["date"].min().date(), df["date"].max().date()
-date_range = st.sidebar.date_input("기간 선택", (min_d, max_d), min_value=min_d, max_value=max_d)
-
-only_verified = st.sidebar.checkbox("산술검증된 지점만 보기", value=False)
-show_monthly = st.sidebar.checkbox("월평균 포함", value=True)
-show_events = st.sidebar.checkbox("물류 이슈 마커 표시", value=True)
+date_range = (min_d, max_d)
+show_events = True
 
 f = df.copy()
-if len(date_range) == 2:
-    f = f[(f["date"].dt.date >= date_range[0]) & (f["date"].dt.date <= date_range[1])]
-if only_verified:
-    f = f[f["verified"]]
-if not show_monthly:
-    f = f[f["type"] != "월평균"]
 
 # ---------------------------------------------------------------------------
 # 3) 헤더 & KPI
@@ -840,16 +830,24 @@ IMPACT = {
 }
 
 SCFI_CORR = {
-    "미국-이란 전쟁·호르무즈 해협":
-        "공습 직전(2/27) 1,333pt → 3주 후(3/20) 1,707pt(+28%). 단기 급등은 사태와 직접 연관. "
-        "이후 8월 말 3,510pt까지 이어진 상승은 7월부터 겹친 파나마 운하 흘수 제한과도 맞물려 있어 호르무즈 요인만으로 분리하긴 어려움.",
-    "홍해-수에즈 운하 사태":
-        "공격 개시 직전(11/17) 1,000pt → 약 7주 후(1/5) 1,897pt(+90%) → 2024년 7월 정점 3,734pt(+273%). "
-        "3개 이슈 중 가장 즉각적이고 뚜렷한 상관관계.",
-    "파나마 운하 리스크":
-        "2023년 8월 위기 당시 1,029pt → 1,034pt로 사실상 변화 없음(+0.4%). "
-        "종합지수 차원에서는 뚜렷한 연관성이 확인되지 않음(주로 미주동안 개별 항로에 국한된 영향으로 추정). "
-        "2026년 재발 시점(7월 3,080pt → 8월 3,510pt)은 같은 기간 진행 중이던 호르무즈 사태와 겹쳐 있어 파나마 요인만으로 분리하기 어려움.",
+    "미국-이란 전쟁·호르무즈 해협": dict(
+        points=[("공습 직전 (2/27)", "1,333pt", None),
+                ("3주 후 (3/20)", "1,707pt", "+28%"),
+                ("8월 말", "3,510pt", None)],
+        note="단기(3주) 급등은 사태와 직접 연관. 8월까지 이어진 상승은 7월부터 겹친 파나마 운하 이슈와 혼재돼 있어 호르무즈 요인만으로 분리하긴 어려움.",
+    ),
+    "홍해-수에즈 운하 사태": dict(
+        points=[("공격 직전 (11/17)", "1,000pt", None),
+                ("약 7주 후 (1/5)", "1,897pt", "+90%"),
+                ("2024.7 정점", "3,734pt", "+273%")],
+        note="3개 이슈 중 가장 즉각적이고 뚜렷한 상관관계.",
+    ),
+    "파나마 운하 리스크": dict(
+        points=[("2023.8 위기 직전", "1,029pt", None),
+                ("위기 중", "1,034pt", "+0.4%"),
+                ("2026.7→8 재발", "3,080→3,510pt", None)],
+        note="종합지수 차원에서는 뚜렷한 연관성이 확인되지 않음(주로 미주동안 개별 항로 국한 추정). 2026년 재발 구간은 호르무즈 사태와 겹쳐 분리하기 어려움.",
+    ),
 }
 
 st.subheader("📌 글로벌 물류 이슈")
@@ -866,7 +864,11 @@ for i, (issue, color) in enumerate(ISSUE_COLOR.items(), start=1):
     for line in IMPACT[issue]:
         st.markdown(f"- {line}")
     st.markdown("**SCFI 연관성**")
-    st.info(SCFI_CORR[issue])
+    corr = SCFI_CORR[issue]
+    cols = st.columns(len(corr["points"]))
+    for col, (label, value, delta) in zip(cols, corr["points"]):
+        col.metric(label, value, delta)
+    st.caption(corr["note"])
     if i < len(ISSUE_COLOR):
         st.markdown("---")
 st.markdown("---")
@@ -879,9 +881,9 @@ st.caption(
 # 5) 데이터 테이블
 # ---------------------------------------------------------------------------
 st.subheader("원자료 테이블")
-show_df = f[["label", "value", "type", "note", "source", "url", "verified"]].rename(columns={
+show_df = f[["label", "value", "type", "note", "source", "url"]].rename(columns={
     "label": "날짜/기간", "value": "SCFI(pt)", "type": "유형",
-    "note": "원문 명시 사실", "source": "매체", "url": "출처 URL", "verified": "산술검증",
+    "note": "원문 명시 사실", "source": "매체", "url": "출처 URL",
 })
 st.dataframe(
     show_df,
